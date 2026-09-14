@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="bn" class="h-full w-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ad Code Generator - Telegram Mini App</title>
+    
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Hind Siliguri', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            background-color: #020617;
+        }
+    </style>
+</head>
+<body class="h-full w-full bg-slate-950 font-sans antialiased flex flex-col justify-between relative selection:bg-indigo-500 selection:text-white p-0 m-0">
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col space-y-2 max-w-xs w-full pointer-events-none px-4"></div>
+
+    <main class="h-full w-full m-0 p-0 flex items-center justify-center relative overflow-hidden bg-slate-950">
+        <div id="ad-box-wrapper" class="relative h-full w-full bg-slate-950 p-6 flex flex-col items-center justify-center text-center overflow-hidden">
+            
+            <!-- Countdown Timer -->
+            <div id="corner-timer-badge" class="hidden absolute top-6 right-6 bg-slate-900/90 border border-indigo-500/40 text-indigo-300 font-mono text-xs px-4 py-2 rounded-full shadow-2xl flex items-center space-x-2 animate-pulse z-20">
+                <i class="fa-solid fa-clock text-indigo-400 text-xs"></i>
+                <span><strong id="timer-countdown-text" class="text-white text-sm">15</strong>s</span>
+            </div>
+
+            <!-- Session ID Badge -->
+            <div class="absolute top-6 left-6 text-[11px] font-mono text-slate-500 bg-slate-900/80 px-3.5 py-1.5 rounded-full border border-slate-800 z-20 shadow-md">
+                <span id="current-session-id" class="text-slate-400">Loading...</span>
+            </div>
+
+            <!-- 1. Ready State (Start Button) -->
+            <div id="state-ready" class="space-y-8 my-auto flex flex-col items-center justify-center w-full">
+                <div class="w-28 h-28 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-3xl flex items-center justify-center mx-auto text-5xl shadow-2xl shadow-indigo-500/10">
+                    <i class="fa-solid fa-play ml-1"></i>
+                </div>
+                <button id="btn-start" onclick="startAdSession()" class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white text-2xl font-bold px-14 py-4 rounded-2xl shadow-2xl shadow-indigo-600/40 transition-all transform hover:scale-105 active:scale-95 flex items-center space-x-3 cursor-pointer">
+                    <i class="fa-solid fa-circle-play text-2xl"></i>
+                    <span>Start Ad</span>
+                </button>
+            </div>
+
+            <!-- 2. Running State (Ad Timer Running) -->
+            <div id="state-running" class="hidden space-y-4 my-auto flex flex-col items-center justify-center w-full">
+                <div class="w-24 h-24 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto text-4xl animate-spin">
+                    <i class="fa-solid fa-spinner"></i>
+                </div>
+                <p class="text-slate-400 text-sm">বিজ্ঞাপন প্রদর্শন চলছে, অপেক্ষা করুন...</p>
+            </div>
+
+            <!-- 3. Completed State (Close Button) -->
+            <div id="state-completed" class="hidden space-y-6 my-auto flex flex-col items-center justify-center w-full">
+                <div class="w-24 h-24 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-4xl border border-emerald-500/20 shadow-2xl shadow-emerald-500/10">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <button onclick="revealGeneratedCode()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xl px-12 py-4 rounded-2xl shadow-2xl shadow-rose-600/40 transition-all transform hover:scale-105 active:scale-95 flex items-center space-x-3 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                    <span>Close</span>
+                </button>
+            </div>
+
+            <!-- 4. Code Display State -->
+            <div id="state-revealed" class="hidden space-y-6 w-full max-w-sm my-auto flex flex-col items-center justify-center px-4">
+                <div class="w-full bg-slate-900 border border-indigo-500/40 p-6 rounded-3xl shadow-2xl">
+                    <div class="flex flex-col items-center justify-center space-y-5">
+                        <span id="display-12digit-code" class="font-mono text-2xl sm:text-3xl font-extrabold tracking-widest text-indigo-400 select-all">XXXX-XXXX-XXXX</span>
+                        <button onclick="copyGeneratedCode()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all text-sm flex items-center justify-center space-x-2 shadow-lg cursor-pointer">
+                            <i class="fa-solid fa-copy"></i>
+                            <span>কোড কপি করুন</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Disabled State -->
+            <div id="state-disabled" class="hidden space-y-4 my-auto flex flex-col items-center justify-center">
+                <div class="w-20 h-20 bg-rose-500/10 text-rose-400 rounded-3xl flex items-center justify-center mx-auto text-3xl border border-rose-500/20">
+                    <i class="fa-solid fa-ban"></i>
+                </div>
+                <p class="text-sm text-slate-400 max-w-xs">বিজ্ঞাপন সার্ভিস আপাতত বন্ধ রয়েছে</p>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Ad Injection Container -->
+    <div id="ad-trigger-zone" class="w-0 h-0 overflow-hidden opacity-0 pointer-events-none"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            addDoc,
+            collection, 
+            query, 
+            where,
+            getDocs, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getAuth, 
+            signInAnonymously 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // ফায়ারবেজ কনফিগারেশন
+        const firebaseConfig = {
+            apiKey: "AIzaSyBM_waShlBNqP_36h1zRAP53leSakBg8ng",
+            authDomain: "micro-job-39efd.firebaseapp.com",
+            projectId: "micro-job-39efd",
+            storageBucket: "micro-job-39efd.firebasestorage.app",
+            messagingSenderId: "507993634167",
+            appId: "1:507993634167:web:5ab509c55b277692581d72",
+            measurementId: "G-2QQZQTJTYW"
+        };
+
+        // Telegram WebApp সেটআপ
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
+        let app, auth, db;
+        let currentAdSessionId = null;
+        let activeAdSettings = { status: false, script: "" };
+        const AD_DURATION = 15; // টাইমার সেকেন্ড
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            initFirebase();
+            generateNewAdSessionId();
+            await loadAdSettings();
+        });
+
+        async function initFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                await signInAnonymously(auth);
+            } catch (err) {
+                console.error("Firebase Auth Error:", err);
+            }
+        }
+
+        function generateNewAdSessionId() {
+            const randomNum = Math.floor(10000 + Math.random() * 90000);
+            currentAdSessionId = `ADSESSION-${randomNum}`;
+            document.getElementById('current-session-id').innerText = currentAdSessionId;
+        }
+
+        // ডাটাবেজ থেকে ad_settings_adsterra -> config রিড করা
+        async function loadAdSettings() {
+            if (!db) return;
+            try {
+                const configDocRef = doc(db, 'ad_settings_adsterra', 'config');
+                const docSnap = await getDoc(configDocRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    activeAdSettings = {
+                        status: data.status === true,
+                        script: data.script || ""
+                    };
+                    
+                    // স্ক্রিপ্ট আগে থেকেই DOM-এ রেডি রাখা
+                    if (activeAdSettings.status && activeAdSettings.script) {
+                        preloadAdScript(activeAdSettings.script);
+                    }
+                } else {
+                    activeAdSettings = { status: false, script: "" };
+                }
+                updateUI();
+            } catch (err) {
+                console.error("Config fetch error:", err);
+                activeAdSettings = { status: false, script: "" };
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            const stateReady = document.getElementById('state-ready');
+            const stateDisabled = document.getElementById('state-disabled');
+
+            if (!activeAdSettings.status) {
+                stateReady.classList.add('hidden');
+                stateDisabled.classList.remove('hidden');
+            } else {
+                stateDisabled.classList.add('hidden');
+                stateReady.classList.remove('hidden');
+            }
+        }
+
+        // স্ক্রিপ্ট সঠিকভাবে লোড করানো এবং প্রোটোকল হ্যান্ডেল করা
+        function preloadAdScript(scriptContent) {
+            if (!scriptContent) return;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = scriptContent.trim();
+            const scripts = tempDiv.querySelectorAll('script');
+
+            scripts.forEach(s => {
+                let srcUrl = s.getAttribute('src');
+                if (srcUrl) {
+                    if (srcUrl.startsWith('//')) {
+                        srcUrl = 'https:' + srcUrl; // প্রোটোকল ফিক্স
+                    }
+                    const newScript = document.createElement('script');
+                    newScript.src = srcUrl;
+                    newScript.async = true;
+
+                    // সব অ্যাট্রিবিউট কপি করা (যেমন data-zone, data-sdk)
+                    Array.from(s.attributes).forEach(attr => {
+                        if (attr.name !== 'src') {
+                            newScript.setAttribute(attr.name, attr.value);
+                        }
+                    });
+
+                    document.head.appendChild(newScript);
+                }
+            });
+        }
+
+        // অ্যাড ট্রিগার করা
+        function executeAdTrigger() {
+            // যদি Monetag SDK ফাংশন উইন্ডোতে তৈরি হয় তবে কল দেওয়া
+            const zoneMatch = activeAdSettings.script.match(/data-zone=['"](\d+)['"]/);
+            const sdkMatch = activeAdSettings.script.match(/data-sdk=['"]([^'"]+)['"]/);
+
+            if (sdkMatch && typeof window[sdkMatch[1]] === 'function') {
+                try {
+                    window[sdkMatch[1]]();
+                } catch (e) {
+                    console.warn("Direct SDK trigger failed:", e);
+                }
+            }
+
+            // সাধারণ ক্লিক ইভেন্ট সিমুলেশন (পপআন্ডার সক্রিয় করার জন্য)
+            const fakeClick = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            });
+            document.body.dispatchEvent(fakeClick);
+        }
+
+        window.startAdSession = async function() {
+            if (!activeAdSettings.status) {
+                showToast("বিজ্ঞাপন সার্ভিস বন্ধ রয়েছে!", "error");
+                return;
+            }
+
+            // ডুপ্লিকেট সেশন চেক
+            const q = query(
+                collection(db, 'generated_codes'), 
+                where('adSessionId', '==', currentAdSessionId)
+            );
+            const querySnap = await getDocs(q);
+            if (!querySnap.empty) {
+                showToast("এই সেশনে ইতিমধ্যে কোড নেওয়া হয়েছে!", "error");
+                return;
+            }
+
+            // অ্যাড ফায়ার করা
+            executeAdTrigger();
+
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+
+            document.getElementById('state-ready').classList.add('hidden');
+            document.getElementById('state-running').classList.remove('hidden');
+
+            const cornerTimer = document.getElementById('corner-timer-badge');
+            const countdownText = document.getElementById('timer-countdown-text');
+            cornerTimer.classList.remove('hidden');
+
+            let remaining = AD_DURATION;
+            countdownText.innerText = remaining;
+
+            const timer = setInterval(() => {
+                remaining--;
+                countdownText.innerText = remaining;
+
+                if (remaining <= 0) {
+                    clearInterval(timer);
+                    cornerTimer.classList.add('hidden');
+                    document.getElementById('state-running').classList.add('hidden');
+                    document.getElementById('state-completed').classList.remove('hidden');
+
+                    if (tg?.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
+                }
+            }, 1000);
+        };
+
+        // কোড তৈরি ও সরাসরি ডাটাবেজে সংরক্ষণ
+        window.revealGeneratedCode = async function() {
+            try {
+                const code12 = generate12DigitCode();
+
+                await addDoc(collection(db, 'generated_codes'), {
+                    adSessionId: currentAdSessionId,
+                    claimedAt: null,
+                    code: code12,
+                    generatedAt: serverTimestamp(),
+                    status: "active"
+                });
+
+                document.getElementById('state-completed').classList.add('hidden');
+                document.getElementById('state-revealed').classList.remove('hidden');
+                document.getElementById('display-12digit-code').innerText = code12;
+                showToast("কোড তৈরি সম্পন্ন হয়েছে!", "success");
+
+            } catch (err) {
+                console.error("Save Error:", err);
+                showToast("কোড সেভ করতে সমস্যা হয়েছে!", "error");
+            }
+        };
+
+        function generate12DigitCode() {
+            const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+            let segments = [];
+            for (let i = 0; i < 3; i++) {
+                let part = "";
+                for (let j = 0; j < 4; j++) {
+                    part += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                segments.push(part);
+            }
+            return segments.join('-');
+        }
+
+        window.copyGeneratedCode = async function() {
+            const codeText = document.getElementById('display-12digit-code').innerText;
+            if (!codeText || codeText.includes('XXXX')) return;
+
+            try {
+                await navigator.clipboard.writeText(codeText);
+                showToast("কোড কপি হয়েছে!", "success");
+            } catch (e) {
+                const tempInput = document.createElement('input');
+                tempInput.value = codeText;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                showToast("কোড কপি হয়েছে!", "success");
+            }
+        };
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgBg = type === "success" 
+                ? "bg-slate-900 border-emerald-500 text-emerald-200" 
+                : (type === "error" ? "bg-slate-900 border-rose-500 text-rose-200" : "bg-slate-900 border-slate-700 text-slate-100");
+
+            toast.className = `flex items-center justify-center border px-4 py-2.5 rounded-xl shadow-xl text-xs transition-all duration-300 transform translate-y-2 pointer-events-auto ${bgBg}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
